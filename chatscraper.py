@@ -41,6 +41,8 @@ class ChatScraper(object):
         'www.netflix.com',
         'iview.abc.net.au',
         'tenplay.com.au',
+        'www.funnyordie.com',
+        'www.sbs.com.au',
     ]
 
     KNOWN_PODCAST_DIRECTORY_SITES = [
@@ -51,6 +53,10 @@ class ChatScraper(object):
         'www.thisamericanlife.org',
         'www.gimletmedia.com',
         'www.wnycstudios.org',
+        'thedollop.net',
+        'thedollop.libsyn.com',
+        'www.mydadwroteaporno.com',
+        'revisionisthistory.com',
     ]
 
     KNOWN_WEB_CLIP_SITES = [
@@ -63,6 +69,7 @@ class ChatScraper(object):
         'podcast',
         'radio',
     ]
+
 
     def __init__(self, rss_feed_url):
         self.feed = feedparser.parse(rss_feed_url)
@@ -216,9 +223,10 @@ class ChatScraper(object):
 
         url_parts = urllib.parse.urlparse(url)
         for fingerprint in self.PODCAST_URL_PATH_FINGERPRINTS:
-            if fingerprint in url_parts.path or \
-                fingerprint in url_parts.netloc or \
-                fingerprint in link_text:
+            fingerprint = fingerprint.lower()
+            if fingerprint in url_parts.path.lower() or \
+                fingerprint in url_parts.netloc.lower() or \
+                fingerprint in link_text.lower():
                 return True
 
         return False
@@ -230,6 +238,11 @@ class ChatScraper(object):
 
     def _is_music(self, link_text, url):
         if self._is_amazon_music(link_text, url):
+            return True
+        return False
+
+    def _is_seven_thirty_interview(self, link_text, url):
+        if url.startswith('http://www.abc.net.au/7.30/'):
             return True
         return False
 
