@@ -1,3 +1,5 @@
+import csv
+import sys
 import urllib
 import validators
 import requests
@@ -94,7 +96,10 @@ class ChatScraper(object):
             else:
                 raise Exception('Cannot find show notes links')
         except AttributeError:
-            show_notes_links = episode_page.ul.find_all('a')
+            try:
+                show_notes_links = episode_page.ul.find_all('a')
+            except:
+                raise(Exception(episode_page_url))
 
         for a in show_notes_links:
             item_url = a['href']
@@ -280,24 +285,22 @@ class ChatScraper(object):
             else:
                 print('    - nothing found')
 
-    def print_list(self, episode_numbers=[]):
-        episode_urls = []
-        if not episode_numbers:
-            episode_urls = [e.link for e in self.feed.entries]
-        else:
-            for episode_number in episode_numbers:
-                episode_urls.append('{}/ep{}'.format(self.BASE_EPISODES_PAGE_URL, episode_number))
+    def print_list(self, episode_numbers=[], write_to_csv=False):
+        field_names = ['Link', 'Episode #', 'Category']
+        writer = csv.DictWriter(sys.stdout, fieldnames=field_names)
+        writer.writeheader()
 
-        links_by_episode = {}
-        for episode_url in episode_urls:
-            links_by_episode[episode_url] = self.categorise_links(
+        for episode_number in episode_numbers:
+            # import pudb;pudb.set_trace()
+            episode_url = '{}/ep{}'.format(self.BASE_EPISODES_PAGE_URL, episode_number)
+            links_by_category = self.categorise_links(
                 self.get_show_notes_links_for_episode(episode_url)
             )
-            sleep(5)
-
-        all_show_notes = defaultdict(list)
-        for episode_link, categorised_show_notes_links in links_by_episode.items():
-            for category in categorised_show_notes_links:
-                all_show_notes[category].extend(categorised_show_notes_links[category])
-
-        self.print_category_items(all_show_notes)
+            for category, links in links_by_category.items():
+                for link_dict in links:
+                    entry = {
+                        'Link': '=HYPERLINK("{}", "{}")'.format(link_dict['url'], link_dict['link_text']),
+                        'Episode #': '=HYPERLINK("{}", "{}")'.format(episode_url, episode_number),
+                        'Category': category.replace('_', ' ').capitalize().replace('Tv ', 'TV '),
+                    }
+                    writer.writerow(entry)
