@@ -86,6 +86,7 @@ class ChatScraper(object):
 
     def get_show_notes_links_for_episode(self, episode_page_url):
         valid_links = dict()
+
         episode_page = self.parse_page(episode_page_url)
         try:
             h3_sibling = episode_page.h3.next_sibling.find_all('a')
@@ -98,8 +99,16 @@ class ChatScraper(object):
         except AttributeError:
             try:
                 show_notes_links = episode_page.ul.find_all('a')
-            except:
-                raise(Exception(episode_page_url))
+            except AttributeError:
+                try:
+                    show_notes_links = []
+                    paras = episode_page.find_all('p', {'style':'white-space:pre-wrap;'})
+                    for para in paras:
+                        links = para.find_all('a')
+                        for link in links:
+                            show_notes_links.append(link)
+                except:
+                    raise(Exception(episode_page_url))
 
         for a in show_notes_links:
             item_url = a['href']
@@ -291,7 +300,6 @@ class ChatScraper(object):
         writer.writeheader()
 
         for episode_number in episode_numbers:
-            # import pudb;pudb.set_trace()
             episode_url = '{}/ep{}'.format(self.BASE_EPISODES_PAGE_URL, episode_number)
             links_by_category = self.categorise_links(
                 self.get_show_notes_links_for_episode(episode_url)
