@@ -10,7 +10,7 @@ from collections import defaultdict
 
 from bs4 import BeautifulSoup
 from validators import ValidationFailure
-from requests.exceptions import ConnectionError
+from requests.exceptions import ConnectionError, Timeout
 
 logger = logging.getLogger(__name__)
 
@@ -116,9 +116,9 @@ class ChatScraper(object):
                 # Some urls involve a redirect, so follow that using requests
                 # to get the real final url
                 try:
-                    r = requests.get(item_url)
+                    r = requests.get(item_url, timeout=20)
                     valid_links[a.text] = r.url
-                except ConnectionError:
+                except (ConnectionError, ConnectionResetError, Timeout):
                     valid_links[a.text] = item_url
             else:
                 logger.info("Not a valid URL, ignoring: {}".format(item_url))
@@ -260,22 +260,31 @@ class ChatScraper(object):
             return True
         return False
 
+    def _is_boring_footer_link(self, link_text, url):
+        if url == 'https://www.twenty07.com/' \
+            or url == 'https://www.boxerandco.com.au/' \
+            or url == 'https://www.stephenblake.com.au/' \
+            or url == 'https://diamantina.com.au/':
+            return True
+        return False
+
     def categorise_links(self, links):
         results = dict(
             film=[], book=[], podcast=[], web_clip = [], music=[], tv_show=[]
         )
         notsure_list = []
         for link_text, url in links.items():
-            categorised = False
-            for item_type in results.keys():
-                category_type_test_func_name = '_is_{}'.format(item_type)
-                if getattr(self, category_type_test_func_name)(link_text, url):
-                    results[item_type].append({'link_text': link_text, 'url': url})
-                    categorised = True
-                    break
+            if not self._is_boring_footer_link(link_text, url):
+                categorised = False
+                for item_type in results.keys():
+                    category_type_test_func_name = '_is_{}'.format(item_type)
+                    if getattr(self, category_type_test_func_name)(link_text, url):
+                        results[item_type].append({'link_text': link_text, 'url': url})
+                        categorised = True
+                        break
 
-            if not categorised:
-                notsure_list.append({'link_text': link_text, 'url': url})
+                if not categorised:
+                    notsure_list.append({'link_text': link_text, 'url': url})
 
         results['misc'] = notsure_list
         return results
